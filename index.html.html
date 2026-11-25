@@ -1,0 +1,2125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BatchSync CR — Production Class Representative & Subscription Portal</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+        }
+      }
+    };
+  </script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+  <!-- =====================================================================
+       TOP STATUS & BACKEND CONFIGURATION BAR
+  ====================================================================== -->
+  <header class="bg-slate-900 text-white sticky top-0 z-40 border-b border-slate-800 shadow-md">
+    <div class="max-w-6xl mx-auto px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2">
+      <!-- Brand + Connection Mode Indicator -->
+      <div class="flex items-center gap-2.5">
+        <div class="h-8 w-8 rounded-xl bg-indigo-600 flex items-center justify-center font-extrabold text-sm shadow-inner">
+          CR
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span id="top-portal-title" class="font-bold text-sm tracking-tight">BatchSync Portal</span>
+            <span id="connection-badge" class="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30">
+              <span class="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
+              <span>Demo Mode</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Controls: Demo Switcher (when in Demo Mode) + Setup Wizard + Logout -->
+      <div class="flex items-center gap-2">
+        <!-- Quick Demo Role Switcher (Hidden when Live Firebase is connected) -->
+        <div id="demo-role-switcher" class="hidden sm:flex items-center bg-slate-800 p-0.5 rounded-xl border border-slate-700 text-[11px]">
+          <button onclick="switchDemoPersona('student_active')" id="demo-btn-active" class="px-2.5 py-1 rounded-lg font-semibold bg-indigo-600 text-white transition">Active Student</button>
+          <button onclick="switchDemoPersona('student_locked')" id="demo-btn-locked" class="px-2.5 py-1 rounded-lg font-semibold text-slate-300 hover:text-white transition">Expired Student</button>
+          <button onclick="switchDemoPersona('admin')" id="demo-btn-admin" class="px-2.5 py-1 rounded-lg font-semibold text-slate-300 hover:text-white transition">CR Admin</button>
+        </div>
+
+        <button onclick="openSetupModal()"
+          class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition flex items-center gap-1.5">
+          <i class="fa-solid fa-plug text-emerald-400"></i>
+          <span class="hidden sm:inline">Backend Setup</span>
+          <span class="sm:hidden">Setup</span>
+        </button>
+
+        <button id="btn-logout" onclick="handleLogout()" class="hidden px-3 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/30 text-xs font-semibold text-rose-200 transition flex items-center gap-1.5">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          <span>Logout</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none max-w-sm w-full px-4 sm:px-0"></div>
+
+  <!-- =====================================================================
+       BACKEND SETUP & CONFIGURATION WIZARD MODAL
+  ====================================================================== -->
+  <div id="setup-modal" class="fixed inset-0 z-50 hidden bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto">
+      <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <i class="fa-solid fa-server text-emerald-400"></i>
+          <h2 class="text-base sm:text-lg font-bold">Connect Live Multi-User Backend (Firebase)</h2>
+        </div>
+        <button onclick="closeSetupModal()" class="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-5 sm:p-6 space-y-5 max-h-[82vh] overflow-y-auto text-sm">
+        <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 text-xs sm:text-sm text-indigo-950 space-y-1.5">
+          <p class="font-bold flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-info text-indigo-600"></i>
+            <span>How to make this live for all students in 3 minutes (100% Free):</span>
+          </p>
+          <ol class="list-decimal list-inside space-y-1 text-indigo-900/90 text-xs leading-relaxed">
+            <li>Go to <strong>console.firebase.google.com</strong> and create a free project.</li>
+            <li>Enable <strong>Authentication</strong> → Sign-in method → <strong>Email/Password</strong>.</li>
+            <li>Enable <strong>Firestore Database</strong> → Create database (start in <strong>Production Mode</strong>).</li>
+            <li>(Optional) Enable <strong>Storage</strong> if you want direct PDF uploads, or just paste Google Drive links for free.</li>
+            <li>In <strong>Project Settings (Gear Icon)</strong> → Register a Web App (<code>&lt;/&gt;</code>) and paste the <code>firebaseConfig</code> object below!</li>
+          </ol>
+        </div>
+
+        <form onsubmit="saveFirebaseConfig(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">
+              Paste Your Firebase Config (JSON or JS Object)
+            </label>
+            <textarea id="cfg-paste-box" rows="6" placeholder='{
+  "apiKey": "AIzaSy...",
+  "authDomain": "your-batch.firebaseapp.com",
+  "projectId": "your-batch",
+  "storageBucket": "your-batch.appspot.com",
+  "messagingSenderId": "123456789",
+  "appId": "1:123456789:web:abcdef"
+}' class="w-full p-3 rounded-xl border border-slate-300 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"></textarea>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">CR Admin Email (Optional Override)</label>
+              <input type="email" id="cfg-admin-email" placeholder="cr.email@gmail.com"
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              <p class="text-[11px] text-slate-500 mt-1">Note: Only the configured CR Admin email can receive administrator privileges.</p>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Default Batch Title</label>
+              <input type="text" id="cfg-batch-name" placeholder="Chemistry 25 Batch"
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-200">
+            <button type="button" onclick="resetToDemoMode()"
+              class="px-3.5 py-2 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-semibold transition">
+              Switch Back to Demo Mode
+            </button>
+
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="closeSetupModal()" class="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 text-xs font-semibold">
+                Cancel
+              </button>
+              <button type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition">
+                Save & Connect Live
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       MAIN CONTAINER
+  ====================================================================== -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-5 sm:py-8">
+
+    <!-- ===================================================================
+         SCREEN 1: AUTHENTICATION (SIGN IN / SIGN UP)
+    ==================================================================== -->
+    <section id="screen-auth" class="hidden max-w-md mx-auto my-4 sm:my-10">
+      <div class="bg-white rounded-3xl shadow-xl border border-slate-200/90 overflow-hidden">
+        <div class="bg-gradient-to-br from-indigo-900 via-indigo-800 to-slate-900 p-6 sm:p-8 text-white text-center">
+          <div class="h-14 w-14 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center mx-auto mb-3 text-2xl font-extrabold">
+            <i class="fa-solid fa-graduation-cap"></i>
+          </div>
+          <h1 id="auth-portal-heading" class="text-xl sm:text-2xl font-extrabold tracking-tight">BatchSync CR Portal</h1>
+          <p class="text-xs sm:text-sm text-indigo-200 mt-1">Class Routines, Lecture Slides, Exam Notices & Batch Chat</p>
+        </div>
+
+        <div class="p-6 sm:p-8">
+          <!-- Auth Mode Tabs -->
+          <div class="grid grid-cols-2 gap-1.5 bg-slate-100 p-1 rounded-xl mb-6">
+            <button type="button" id="tab-signin" onclick="toggleAuthMode('signin')"
+              class="py-2 rounded-lg text-xs sm:text-sm font-bold bg-white text-indigo-700 shadow-xs transition">
+              Student / CR Sign In
+            </button>
+            <button type="button" id="tab-signup" onclick="toggleAuthMode('signup')"
+              class="py-2 rounded-lg text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 transition">
+              New Registration
+            </button>
+          </div>
+
+          <!-- Sign In Form -->
+          <form id="form-signin" onsubmit="handleSignIn(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">University / Personal Email</label>
+              <input type="email" id="signin-email" required placeholder="student@example.com"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Password</label>
+              <input type="password" id="signin-password" required placeholder="••••••••"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <button type="submit" id="btn-signin-submit"
+              class="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md transition">
+              Sign In to Portal
+            </button>
+          </form>
+
+          <!-- Sign Up Form -->
+          <form id="form-signup" onsubmit="handleSignUp(event)" class="hidden space-y-3.5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
+                <input type="text" id="signup-name" required placeholder="Tanvir Islam"
+                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Student ID / Roll</label>
+                <input type="text" id="signup-sid" required placeholder="2304018"
+                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
+              <input type="email" id="signup-email" required placeholder="tanvir@example.com"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Create Password (Min 6 chars)</label>
+              <input type="password" id="signup-password" minlength="6" required placeholder="••••••••"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-[11px] text-slate-600">
+              <i class="fa-solid fa-shield-halved text-indigo-600 mr-1"></i>
+              The first account created automatically becomes <strong>CR Admin</strong>. Subsequent accounts register as Students and unlock after monthly subscription verification.
+            </div>
+            <button type="submit" id="btn-signup-submit"
+              class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition">
+              Create Account
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         SCREEN 2: SUBSCRIPTION LOCK / PAYMENT GATE (EXPIRED STUDENTS)
+    ==================================================================== -->
+    <section id="screen-locked" class="hidden max-w-xl mx-auto">
+      <div class="bg-white rounded-3xl shadow-xl border border-slate-200/90 overflow-hidden">
+        <div class="bg-gradient-to-br from-rose-600 via-rose-700 to-slate-900 p-6 sm:p-8 text-white text-center">
+          <div class="h-16 w-16 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center mx-auto mb-3 text-3xl text-amber-300">
+            <i class="fa-solid fa-lock"></i>
+          </div>
+          <span class="inline-block text-[11px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-rose-500/40 border border-rose-300/30 mb-2">
+            Subscription Required
+          </span>
+          <h1 class="text-xl sm:text-2xl font-extrabold">Activate Your Monthly Batch Pass</h1>
+          <p class="text-xs sm:text-sm text-rose-100 mt-2 max-w-md mx-auto leading-relaxed">
+            Welcome <strong id="lock-user-name">Student</strong> (<span id="lock-user-sid">ID</span>). Pay the monthly fee to unlock class routines, lecture slides, urgent notices, and batch chat for 30 days.
+          </p>
+        </div>
+
+        <div class="p-6 sm:p-8 space-y-6">
+          <!-- Step 1: Payment Numbers -->
+          <div class="bg-slate-50 rounded-2xl p-4 sm:p-5 border border-slate-200 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-extrabold uppercase tracking-wider text-indigo-600">Step 1 • Send Money</span>
+              <span id="lock-fee-badge" class="text-sm font-extrabold bg-amber-100 text-amber-900 px-3 py-0.5 rounded-lg">৳ 50 BDT / Month</span>
+            </div>
+            <p class="text-xs text-slate-600">
+              Send the monthly fee via <strong>bKash</strong> or <strong>Nagad</strong> ("Send Money") to the CR's number below:
+            </p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div class="bg-white p-3 rounded-xl border border-pink-200 flex items-center justify-between">
+                <div>
+                  <span class="text-[11px] font-bold text-pink-600 block">bKash Personal</span>
+                  <span id="lock-bkash-num" class="text-sm font-extrabold text-slate-800">01712345678</span>
+                </div>
+                <button type="button" onclick="copyTextById('lock-bkash-num', 'bKash')"
+                  class="px-2.5 py-1.5 rounded-lg bg-pink-50 hover:bg-pink-100 text-pink-700 text-xs font-bold transition">
+                  <i class="fa-regular fa-copy mr-1"></i>Copy
+                </button>
+              </div>
+
+              <div class="bg-white p-3 rounded-xl border border-orange-200 flex items-center justify-between">
+                <div>
+                  <span class="text-[11px] font-bold text-orange-600 block">Nagad Personal</span>
+                  <span id="lock-nagad-num" class="text-sm font-extrabold text-slate-800">01819876543</span>
+                </div>
+                <button type="button" onclick="copyTextById('lock-nagad-num', 'Nagad')"
+                  class="px-2.5 py-1.5 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-bold transition">
+                  <i class="fa-regular fa-copy mr-1"></i>Copy
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Pending Status Box -->
+          <div id="lock-pending-box" class="hidden bg-amber-50 border border-amber-300 rounded-2xl p-4 flex items-start gap-3">
+            <div class="h-9 w-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
+              <i class="fa-solid fa-clock-rotate-left"></i>
+            </div>
+            <div class="text-xs sm:text-sm">
+              <p class="font-bold text-amber-950">Waiting for CR Verification</p>
+              <p id="lock-pending-detail" class="text-amber-800 mt-0.5 leading-relaxed">
+                Your Transaction ID has been submitted. As soon as the CR approves it, this screen will unlock automatically!
+              </p>
+            </div>
+          </div>
+
+          <!-- Step 2: Submit TrxID Form -->
+          <form onsubmit="submitSubscriptionPayment(event)" class="space-y-4">
+            <span class="text-xs font-extrabold uppercase tracking-wider text-indigo-600 block">Step 2 • Submit Transaction ID</span>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Payment Method</label>
+                <select id="sub-pay-method" required
+                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option value="bKash">bKash</option>
+                  <option value="Nagad">Nagad</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Sender Phone Number</label>
+                <input type="tel" id="sub-pay-sender" required placeholder="017XXXXXXXX"
+                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Transaction ID (TrxID)</label>
+              <input type="text" id="sub-pay-trxid" required placeholder="e.g. BHG74K92LP"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+
+            <button type="submit"
+              class="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-paper-plane"></i>
+              <span>Submit Payment for Approval</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         SCREEN 3: UNLOCKED PORTAL (STUDENT DASHBOARD + CR ADMIN PANEL)
+    ==================================================================== -->
+    <section id="screen-portal" class="hidden space-y-6">
+
+      <!-- User Profile & Subscription Status Banner -->
+      <div class="bg-gradient-to-r from-indigo-950 via-indigo-900 to-slate-900 rounded-2xl p-5 sm:p-6 text-white shadow-lg">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="flex items-center gap-3.5">
+            <div id="user-avatar-initials" class="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center text-lg sm:text-xl font-extrabold shrink-0">
+              CR
+            </div>
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <h1 id="portal-user-name" class="text-lg sm:text-xl font-bold tracking-tight">Student Name</h1>
+                <span id="portal-user-sid" class="text-xs font-mono font-semibold px-2.5 py-0.5 rounded-full bg-white/15 text-indigo-100">ID: 000000</span>
+                <span id="portal-role-badge" class="hidden text-[11px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/25 text-emerald-300 border border-emerald-400/30">
+                  CR Admin
+                </span>
+              </div>
+              <p id="portal-batch-subtitle" class="text-xs sm:text-sm text-indigo-200 mt-0.5">Batch Portal • Active Academic Term</p>
+            </div>
+          </div>
+
+          <!-- Subscription Countdown Pill -->
+          <div class="flex items-center justify-between sm:justify-end gap-3 bg-white/10 border border-white/15 rounded-xl px-4 py-2.5">
+            <div class="flex items-center gap-2.5">
+              <span class="h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
+              <div>
+                <p id="portal-sub-countdown" class="text-xs sm:text-sm font-bold text-emerald-300">Active • 30 Days Left</p>
+                <p id="portal-sub-expiry-date" class="text-[11px] text-indigo-200">Valid until Dec 23, 2026</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Primary Navigation Tabs -->
+      <nav class="bg-white rounded-2xl p-1.5 shadow-sm border border-slate-200/80 flex overflow-x-auto gap-1">
+        <button onclick="switchPortalTab('home')" id="ptab-home"
+          class="portal-tab-btn flex-1 min-w-[90px] py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 bg-indigo-600 text-white shadow-xs">
+          <i class="fa-solid fa-house"></i>
+          <span>Home</span>
+        </button>
+
+        <button onclick="switchPortalTab('routine')" id="ptab-routine"
+          class="portal-tab-btn flex-1 min-w-[100px] py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 text-slate-600 hover:bg-slate-100">
+          <i class="fa-solid fa-calendar-days"></i>
+          <span>Routine</span>
+        </button>
+
+        <button onclick="switchPortalTab('materials')" id="ptab-materials"
+          class="portal-tab-btn flex-1 min-w-[125px] py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 text-slate-600 hover:bg-slate-100">
+          <i class="fa-solid fa-book-open"></i>
+          <span>Notes & Slides</span>
+        </button>
+
+        <button onclick="switchPortalTab('notices')" id="ptab-notices"
+          class="portal-tab-btn flex-1 min-w-[100px] py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 text-slate-600 hover:bg-slate-100">
+          <i class="fa-solid fa-bullhorn"></i>
+          <span>Notices</span>
+        </button>
+
+        <button onclick="switchPortalTab('chat')" id="ptab-chat"
+          class="portal-tab-btn flex-1 min-w-[110px] py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 text-slate-600 hover:bg-slate-100">
+          <i class="fa-solid fa-comments"></i>
+          <span>Batch Chat</span>
+        </button>
+
+        <!-- CR Admin Panel Tab (Strictly visible only to CR Admin) -->
+        <button onclick="switchPortalTab('admin')" id="ptab-admin"
+          class="hidden portal-tab-btn flex-1 min-w-[130px] py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200">
+          <i class="fa-solid fa-shield-halved"></i>
+          <span>CR Admin</span>
+          <span id="nav-pending-count" class="bg-rose-600 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full">0</span>
+        </button>
+      </nav>
+
+      <!-- =================================================================
+           PORTAL TAB 1: HOME DASHBOARD
+      ================================================================== -->
+      <div id="panel-home" class="portal-panel space-y-6">
+        <!-- Pinned Urgent Notice Banner -->
+        <div id="home-urgent-banner"></div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Today's Classes Card -->
+          <div class="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h2 id="home-today-heading" class="text-base sm:text-lg font-bold text-slate-900">Today's Classes</h2>
+                <p class="text-xs text-slate-500">Live schedule synced by your Class Representative</p>
+              </div>
+              <button onclick="switchPortalTab('routine')" class="text-xs font-bold text-indigo-600 hover:text-indigo-800">
+                Full Routine →
+              </button>
+            </div>
+            <div id="home-today-list" class="space-y-3"></div>
+          </div>
+
+          <!-- Latest Notes & Slides Card -->
+          <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="text-base font-bold text-slate-900">Latest Slides & Notes</h2>
+                <button onclick="switchPortalTab('materials')" class="text-xs font-bold text-indigo-600 hover:text-indigo-800">
+                  All Files →
+                </button>
+              </div>
+              <div id="home-latest-materials" class="space-y-3"></div>
+            </div>
+            <div class="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span>Need help? Ask in Batch Chat</span>
+              <button onclick="switchPortalTab('chat')" class="font-bold text-indigo-600 hover:underline">Open Chat</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- =================================================================
+           PORTAL TAB 2: WEEKLY CLASS ROUTINE
+      ================================================================== -->
+      <div id="panel-routine" class="portal-panel hidden">
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+            <div>
+              <h2 class="text-lg font-bold text-slate-900">Weekly Class Routine</h2>
+              <p class="text-xs text-slate-500">Tap a day to view class times, rooms, and course teachers</p>
+            </div>
+            <div id="routine-day-tabs" class="flex flex-wrap gap-1.5"></div>
+          </div>
+          <div id="routine-cards-list" class="space-y-3"></div>
+        </div>
+      </div>
+
+      <!-- =================================================================
+           PORTAL TAB 3: NOTES & SLIDES
+      ================================================================== -->
+      <div id="panel-materials" class="portal-panel hidden">
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+            <div>
+              <h2 class="text-lg font-bold text-slate-900">Notes, Lecture Slides & Lab Sheets</h2>
+              <p class="text-xs text-slate-500">Filter by course or type and open/download directly</p>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-2.5">
+              <div class="relative">
+                <i class="fa-solid fa-magnifying-glass text-slate-400 text-xs absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+                <input type="text" id="filter-mat-search" oninput="renderMaterialsPanel()" placeholder="Search title or course..."
+                  class="w-full sm:w-52 pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <select id="filter-mat-course" onchange="renderMaterialsPanel()"
+                class="px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="ALL">All Courses</option>
+              </select>
+              <select id="filter-mat-type" onchange="renderMaterialsPanel()"
+                class="px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="ALL">All Types</option>
+                <option value="Slide">Lecture Slides</option>
+                <option value="Note">Handwritten Notes</option>
+                <option value="Lab">Lab Sheets</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="materials-cards-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </div>
+      </div>
+
+      <!-- =================================================================
+           PORTAL TAB 4: NOTICE BOARD
+      ================================================================== -->
+      <div id="panel-notices" class="portal-panel hidden">
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80">
+          <div class="flex items-center justify-between mb-5">
+            <div>
+              <h2 class="text-lg font-bold text-slate-900">Official Notice Board</h2>
+              <p class="text-xs text-slate-500">Important announcements, Class Tests (CTs), and schedule updates</p>
+            </div>
+          </div>
+          <div id="notices-cards-list" class="space-y-4"></div>
+        </div>
+      </div>
+
+      <!-- =================================================================
+           PORTAL TAB 5: REAL-TIME BATCH CHAT
+      ================================================================== -->
+      <div id="panel-chat" class="portal-panel hidden">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden flex flex-col h-[530px]">
+          <div class="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="h-10 w-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold">
+                <i class="fa-solid fa-users"></i>
+              </div>
+              <div>
+                <h2 id="chat-room-title" class="text-sm sm:text-base font-bold text-slate-900">Batch Discussion Room</h2>
+                <p class="text-xs text-emerald-600 font-semibold flex items-center gap-1.5">
+                  <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                  <span>Live Batch Sync Active</span>
+                </p>
+              </div>
+            </div>
+            <span class="text-[11px] text-slate-400 hidden sm:inline">Subscribers & CR only</span>
+          </div>
+
+          <div id="chat-feed-container" class="flex-1 p-4 sm:p-5 overflow-y-auto space-y-3.5 bg-slate-50/50"></div>
+
+          <form onsubmit="handleSendChat(event)" class="p-3 sm:p-4 bg-white border-t border-slate-200 flex items-center gap-2.5">
+            <input type="text" id="chat-message-input" required placeholder="Write a message to your batch..."
+              class="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <button type="submit"
+              class="px-4 sm:px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition flex items-center gap-2 shadow-xs shrink-0">
+              <span>Send</span>
+              <i class="fa-solid fa-paper-plane text-xs"></i>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- =================================================================
+           PORTAL TAB 6: CR ADMIN PANEL (ROLE-GATED)
+      ================================================================== -->
+      <div id="panel-admin" class="portal-panel hidden space-y-6">
+
+        <!-- Admin Quick Stats -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex items-center gap-4">
+            <div class="h-12 w-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl">
+              <i class="fa-solid fa-users"></i>
+            </div>
+            <div>
+              <p class="text-xs font-bold text-slate-500 uppercase">Registered Students</p>
+              <p id="adm-stat-total" class="text-2xl font-extrabold text-slate-900">0</p>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex items-center gap-4">
+            <div class="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
+              <i class="fa-solid fa-user-check"></i>
+            </div>
+            <div>
+              <p class="text-xs font-bold text-slate-500 uppercase">Active Subscribers</p>
+              <p id="adm-stat-active" class="text-2xl font-extrabold text-emerald-600">0</p>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex items-center gap-4">
+            <div class="h-12 w-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl">
+              <i class="fa-solid fa-clock"></i>
+            </div>
+            <div>
+              <p class="text-xs font-bold text-slate-500 uppercase">Pending TrxIDs</p>
+              <p id="adm-stat-pending" class="text-2xl font-extrabold text-amber-600">0</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin Sub-Navigation -->
+        <div class="bg-white rounded-2xl p-1.5 border border-slate-200/80 shadow-sm flex overflow-x-auto gap-1">
+          <button onclick="switchAdminSubTab('payments')" id="asub-payments"
+            class="admin-sub-btn flex-1 min-w-[135px] py-2 px-3 rounded-xl text-xs font-bold bg-slate-900 text-white transition">
+            1. Payment Approvals
+          </button>
+          <button onclick="switchAdminSubTab('routine')" id="asub-routine"
+            class="admin-sub-btn flex-1 min-w-[130px] py-2 px-3 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition">
+            2. Manage Routine
+          </button>
+          <button onclick="switchAdminSubTab('materials')" id="asub-materials"
+            class="admin-sub-btn flex-1 min-w-[140px] py-2 px-3 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition">
+            3. Upload Materials
+          </button>
+          <button onclick="switchAdminSubTab('notices')" id="asub-notices"
+            class="admin-sub-btn flex-1 min-w-[125px] py-2 px-3 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition">
+            4. Post Notices
+          </button>
+          <button onclick="switchAdminSubTab('students')" id="asub-students"
+            class="admin-sub-btn flex-1 min-w-[155px] py-2 px-3 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition">
+            5. Students & Settings
+          </button>
+        </div>
+
+        <!-- ADMIN SUB-TAB 1: PAYMENT APPROVALS -->
+        <div id="admin-subpanel-payments" class="admin-subpanel bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-sm">
+          <div class="mb-4">
+            <h3 class="text-base sm:text-lg font-bold text-slate-900">bKash / Nagad Subscription Verification</h3>
+            <p class="text-xs text-slate-500">Approving a payment automatically adds <strong>+30 days</strong> to that student's subscription.</p>
+          </div>
+          <div id="admin-payments-feed" class="space-y-3"></div>
+        </div>
+
+        <!-- ADMIN SUB-TAB 2: MANAGE ROUTINE -->
+        <div id="admin-subpanel-routine" class="admin-subpanel hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm h-fit">
+            <h3 class="text-base font-bold text-slate-900 mb-3">Add Class Slot</h3>
+            <form onsubmit="handleAdminAddRoutine(event)" class="space-y-3">
+              <div class="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Day</label>
+                  <select id="adm-routine-day" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold bg-white">
+                    <option value="Sunday">Sunday</option>
+                    <option value="Monday">Monday</option>
+                    <option value="Tuesday">Tuesday</option>
+                    <option value="Wednesday">Wednesday</option>
+                    <option value="Thursday">Thursday</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Time Slot</label>
+                  <input type="text" id="adm-routine-time" required placeholder="09:00 AM - 10:00 AM"
+                    class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Course Code & Name</label>
+                <input type="text" id="adm-routine-course" required placeholder="CHEM-201: Organic Chemistry"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+              </div>
+              <div class="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Room No.</label>
+                  <input type="text" id="adm-routine-room" required placeholder="Room 302"
+                    class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Teacher</label>
+                  <input type="text" id="adm-routine-teacher" required placeholder="Dr. Kamal Uddin"
+                    class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+                </div>
+              </div>
+              <button type="submit" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition">
+                + Add Class to Routine
+              </button>
+            </form>
+          </div>
+
+          <div class="lg:col-span-2 bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
+            <h3 class="text-base font-bold text-slate-900 mb-3">Existing Routine Entries</h3>
+            <div id="admin-routine-list" class="space-y-2.5"></div>
+          </div>
+        </div>
+
+        <!-- ADMIN SUB-TAB 3: UPLOAD MATERIALS -->
+        <div id="admin-subpanel-materials" class="admin-subpanel hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm h-fit">
+            <h3 class="text-base font-bold text-slate-900 mb-1">Upload Slide / Note</h3>
+            <p class="text-xs text-slate-500 mb-3">Upload a file directly or paste a Google Drive / PDF link.</p>
+
+            <form onsubmit="handleAdminAddMaterial(event)" class="space-y-3">
+              <div class="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Course Code</label>
+                  <input type="text" id="adm-mat-course" required placeholder="CHEM-201"
+                    class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs uppercase" />
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Type</label>
+                  <select id="adm-mat-type" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold bg-white">
+                    <option value="Slide">Slide</option>
+                    <option value="Note">Note</option>
+                    <option value="Lab">Lab</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Title</label>
+                <input type="text" id="adm-mat-title" required placeholder="Lecture 04: Reaction Kinetics"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Google Drive / External Link (Recommended)</label>
+                <input type="url" id="adm-mat-url" placeholder="https://drive.google.com/file/d/..."
+                  class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Or Upload File (Firebase Storage)</label>
+                <input type="file" id="adm-mat-file" accept=".pdf,.ppt,.pptx,.doc,.docx,.jpg,.png"
+                  class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+              </div>
+
+              <button type="submit" id="btn-upload-material" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition">
+                + Publish Material
+              </button>
+            </form>
+          </div>
+
+          <div class="lg:col-span-2 bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
+            <h3 class="text-base font-bold text-slate-900 mb-3">Published Materials</h3>
+            <div id="admin-materials-list" class="space-y-2.5"></div>
+          </div>
+        </div>
+
+        <!-- ADMIN SUB-TAB 4: POST NOTICES -->
+        <div id="admin-subpanel-notices" class="admin-subpanel hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm h-fit">
+            <h3 class="text-base font-bold text-slate-900 mb-3">Publish New Notice</h3>
+            <form onsubmit="handleAdminAddNotice(event)" class="space-y-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Notice Title</label>
+                <input type="text" id="adm-notice-title" required placeholder="CT-2 Syllabus & Date"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Message</label>
+                <textarea id="adm-notice-body" rows="3" required placeholder="Write clear details for your classmates..."
+                  class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs"></textarea>
+              </div>
+              <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" id="adm-notice-urgent" class="rounded text-rose-600 h-4 w-4" />
+                <span class="text-xs font-bold text-rose-600">Mark as URGENT (Pin to Home)</span>
+              </label>
+              <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition">
+                + Post Notice
+              </button>
+            </form>
+          </div>
+
+          <div class="lg:col-span-2 bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
+            <h3 class="text-base font-bold text-slate-900 mb-3">Posted Notices</h3>
+            <div id="admin-notices-list" class="space-y-2.5"></div>
+          </div>
+        </div>
+
+        <!-- ADMIN SUB-TAB 5: STUDENTS & PORTAL SETTINGS -->
+        <div id="admin-subpanel-students" class="admin-subpanel hidden space-y-6">
+          <!-- Portal Settings Form -->
+          <div class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-sm">
+            <h3 class="text-base sm:text-lg font-bold text-slate-900 mb-1">Portal & Payment Settings</h3>
+            <p class="text-xs text-slate-500 mb-4">Customize your batch name, monthly fee, and bKash/Nagad receiving numbers.</p>
+
+            <form onsubmit="handleSavePortalSettings(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Batch / Department Name</label>
+                <input type="text" id="set-batch-name" required
+                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Monthly Fee (BDT)</label>
+                <input type="number" id="set-monthly-fee" required
+                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Admin Email</label>
+                <input type="email" id="set-admin-email" required
+                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">bKash Number</label>
+                <input type="text" id="set-bkash" required
+                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Nagad Number</label>
+                <input type="text" id="set-nagad" required
+                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm" />
+              </div>
+              <div class="flex items-end">
+                <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold transition shadow-xs">
+                  Save Portal Settings
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Student Directory Table -->
+          <div class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-sm">
+            <h3 class="text-base sm:text-lg font-bold text-slate-900 mb-1">Registered Students Directory</h3>
+            <p class="text-xs text-slate-500 mb-4">Manually extend (+30 days) or lock/revoke access for any user.</p>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-200 text-[11px] font-extrabold uppercase text-slate-500">
+                    <th class="py-3 px-3">Student</th>
+                    <th class="py-3 px-3">ID</th>
+                    <th class="py-3 px-3">Role</th>
+                    <th class="py-3 px-3">Access Status</th>
+                    <th class="py-3 px-3">Expiry</th>
+                    <th class="py-3 px-3 text-right">Controls</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-students-tbody" class="divide-y divide-slate-100 text-xs sm:text-sm"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- =====================================================================
+       PRODUCTION FIREBASE v10 + DEMO FALLBACK APPLICATION SCRIPT
+  ====================================================================== -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import {
+      getAuth,
+      createUserWithEmailAndPassword,
+      signInWithEmailAndPassword,
+      signOut,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import {
+      getFirestore,
+      collection,
+      doc,
+      setDoc,
+      getDoc,
+      getDocs,
+      addDoc,
+      updateDoc,
+      deleteDoc,
+      onSnapshot,
+      query,
+      where
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    // -------------------------------------------------------------------
+    // 1. GLOBAL STATE & STORAGE KEYS
+    // -------------------------------------------------------------------
+    const CONFIG_STORAGE_KEY = "batchsync_firebase_cfg_v1";
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+    let isLiveFirebase = false;
+    let fbApp = null;
+    let auth = null;
+    let db = null;
+    let storage = null;
+    let unsubscribers = [];
+
+    const state = {
+      currentUser: null, // { uid, name, studentId, email, role, expiryMs }
+      selectedDay: getTodayWorkingDay(),
+      portalTab: "home",
+      adminSubTab: "payments",
+
+      settings: {
+        batchName: "Chemistry 25 Batch",
+        monthlyFee: 20,
+        bkashNumber: "01910119827",
+        nagadNumber: "01910119827",
+        adminEmail: ""
+      },
+
+      users: [],
+      payments: [],
+      routines: [],
+      materials: [],
+      notices: [],
+      messages: []
+    };
+
+    // -------------------------------------------------------------------
+    // 2. DEMO DATA SEED (Used when Firebase Config is not set yet)
+    // -------------------------------------------------------------------
+    function seedDemoData() {
+      const now = Date.now();
+      state.settings = {
+        batchName: "Chemistry 25 Batch",
+        monthlyFee: 20,
+        bkashNumber: "01910119827",
+        nagadNumber: "01910119827",
+        adminEmail: "251811@ku.ac.bd"
+      };
+
+      state.users = [
+        { uid: "demo-admin", name: "Nusrat Jahan (CR)", studentId: "2304001", email: "cr@batch23.edu.bd", role: "admin", expiryMs: now + THIRTY_DAYS_MS * 12 },
+        { uid: "demo-active", name: "Tanvir Islam", studentId: "2304018", email: "tanvir@batch23.edu.bd", role: "student", expiryMs: now + 24 * 24 * 60 * 60 * 1000 },
+        { uid: "demo-locked", name: "Mehedi Hasan", studentId: "2304012", email: "mehedi@batch23.edu.bd", role: "student", expiryMs: now - 3 * 24 * 60 * 60 * 1000 },
+        { uid: "demo-sadia", name: "Sadia Afrin", studentId: "2304005", email: "sadia@batch23.edu.bd", role: "student", expiryMs: now + 18 * 24 * 60 * 60 * 1000 }
+      ];
+
+      state.payments = [
+        {
+          id: "pay-1",
+          uid: "demo-locked",
+          studentName: "Mehedi Hasan",
+          studentId: "2304012",
+          method: "bKash",
+          sender: "01755221199",
+          trxId: "BHG89K21LP",
+          status: "pending",
+          createdAt: now - 1800000
+        }
+      ];
+
+      state.routines = [
+        { id: "r1", day: "Sunday", time: "09:00 AM - 10:00 AM", course: "CHEM-201: Stereochemistry & Mechanisms", room: "Room 204", teacher: "Prof. Dr. Kamal Uddin" },
+        { id: "r2", day: "Monday", time: "09:30 AM - 10:30 AM", course: "CHEM-203: Chemical Thermodynamics", room: "Room 302", teacher: "Dr. Anisur Rahman" },
+        { id: "r3", day: "Monday", time: "11:00 AM - 01:00 PM", course: "CHEM-204: Organic Qualitative Lab", room: "Organic Lab-2", teacher: "Dr. Farida Begum" },
+        { id: "r4", day: "Tuesday", time: "10:00 AM - 11:00 AM", course: "CHEM-205: Analytical Chemistry", room: "Room 204", teacher: "Dr. Mahbubur Rahman" },
+        { id: "r5", day: "Wednesday", time: "09:00 AM - 10:00 AM", course: "CHEM-201: Stereochemistry & Mechanisms", room: "Room 204", teacher: "Prof. Dr. Kamal Uddin" },
+        { id: "r6", day: "Thursday", time: "11:00 AM - 12:00 PM", course: "CHEM-203: Chemical Thermodynamics", room: "Room 302", teacher: "Dr. Anisur Rahman" }
+      ];
+
+      state.materials = [
+        {
+          id: "m1",
+          course: "CHEM-201",
+          type: "Slide",
+          title: "SN1 vs SN2 & E1/E2 Elimination Mechanisms",
+          url: "https://drive.google.com",
+          createdAt: now - 86400000 * 2
+        },
+        {
+          id: "m2",
+          course: "CHEM-203",
+          type: "Note",
+          title: "Carnot Cycle, Entropy & Gibbs Free Energy Derivations",
+          url: "https://drive.google.com",
+          createdAt: now - 86400000 * 4
+        },
+        {
+          id: "m3",
+          course: "CHEM-205",
+          type: "Lab",
+          title: "UV-Visible Spectrophotometry Lab Manual",
+          url: "https://drive.google.com",
+          createdAt: now - 86400000 * 6
+        }
+      ];
+
+      state.notices = [
+        {
+          id: "n1",
+          title: "CHEM-203 Class Test-1 Scheduled for Wednesday!",
+          body: "Dr. Anisur Rahman Sir confirmed CT-1 will be held this Wednesday at 11:00 AM in Room 302. Syllabus: First & Second Law of Thermodynamics.",
+          urgent: true,
+          createdAt: now - 7200000
+        },
+        {
+          id: "n2",
+          title: "Organic Lab Record Book Submission",
+          body: "Please submit your signed Organic Lab record book before Monday's 11:00 AM session.",
+          urgent: false,
+          createdAt: now - 86400000
+        }
+      ];
+
+      state.messages = [
+        { id: "msg1", uid: "demo-sadia", senderName: "Sadia Afrin", studentId: "2304005", role: "student", text: "Assalamu Alaikum! Did anyone upload Anisur Sir's thermodynamics derivation?", createdAt: now - 3600000 },
+        { id: "msg2", uid: "demo-admin", senderName: "Nusrat Jahan (CR)", studentId: "2304001", role: "admin", text: "Walaikum Assalam! Yes, check the Notes & Slides tab under CHEM-203.", createdAt: now - 3000000 }
+      ];
+
+      state.currentUser = state.users[1]; // Default to Active Student in Demo Mode
+    }
+
+    // -------------------------------------------------------------------
+    // 3. INITIALIZATION: LIVE FIREBASE VS DEMO MODE
+    // -------------------------------------------------------------------
+    function getSavedFirebaseConfig() {
+      // Shared configuration is embedded so batchmates do not configure each browser.
+      const embedded = {
+        apiKey: "AIzaSyA9WwMTc6QXVp_c5CAMzS0vjqgE2qwi0aw",
+        authDomain: "chemistry-25-batch.firebaseapp.com",
+        projectId: "chemistry-25-batch",
+        storageBucket: "chemistry-25-batch.firebasestorage.app",
+        messagingSenderId: "722269139288",
+        appId: "1:722269139288:web:c5c2c4ab93505ba0c7b52d"
+      };
+      return { firebaseConfig: embedded, adminEmail: "251811@ku.ac.bd", batchName: "Chemistry 25 Batch" };
+    }
+
+    async function bootApplication() {
+      const saved = getSavedFirebaseConfig();
+
+      if (saved && saved.firebaseConfig && saved.firebaseConfig.apiKey && saved.firebaseConfig.projectId) {
+        try {
+          fbApp = initializeApp(saved.firebaseConfig);
+          auth = getAuth(fbApp);
+          db = getFirestore(fbApp);
+          storage = null; // Free deployment: use Google Drive links; Firebase Storage is not used.
+          isLiveFirebase = true;
+
+          if (saved.adminEmail) state.settings.adminEmail = saved.adminEmail;
+          if (saved.batchName) state.settings.batchName = saved.batchName;
+
+          updateConnectionUI(true);
+
+          onAuthStateChanged(auth, async (user) => {
+            clearFirestoreListeners();
+            if (!user) {
+              state.currentUser = null;
+              await loadPublicSettingsOnce();
+              showScreen("auth");
+              return;
+            }
+            await loadOrCreateUserProfile(user);
+            startLiveFirestoreSync();
+          });
+          return;
+        } catch (err) {
+          console.error("Firebase init failed:", err);
+          showToast("Firebase config error. Falling back to Demo Mode.", "warning");
+        }
+      }
+
+      // Fallback: Demo Mode
+      isLiveFirebase = false;
+      updateConnectionUI(false);
+      seedDemoData();
+      routeCurrentUser();
+    }
+
+    function updateConnectionUI(live) {
+      const badge = document.getElementById("connection-badge");
+      const demoSwitcher = document.getElementById("demo-role-switcher");
+
+      if (live) {
+        badge.className = "inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30";
+        badge.innerHTML = `<span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span><span>Live Cloud Sync</span>`;
+        demoSwitcher.classList.add("hidden");
+        demoSwitcher.classList.remove("sm:flex");
+      } else {
+        badge.className = "inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30";
+        badge.innerHTML = `<span class="h-1.5 w-1.5 rounded-full bg-amber-400"></span><span>Demo Preview Mode</span>`;
+        demoSwitcher.classList.remove("hidden");
+        demoSwitcher.classList.add("sm:flex");
+      }
+    }
+
+    // -------------------------------------------------------------------
+    // 4. FIREBASE AUTHENTICATION & USER PROFILE RESOLUTION
+    // -------------------------------------------------------------------
+    async function loadPublicSettingsOnce() {
+      if (!db) return;
+      try {
+        const snap = await getDoc(doc(db, "portal_config", "main"));
+        if (snap.exists()) {
+          state.settings = { ...state.settings, ...snap.data() };
+        }
+        document.getElementById("auth-portal-heading").textContent = state.settings.batchName || "BatchSync CR Portal";
+        document.getElementById("top-portal-title").textContent = state.settings.batchName || "BatchSync Portal";
+      } catch (e) {
+        console.warn("Could not read public config:", e);
+      }
+    }
+
+    async function loadOrCreateUserProfile(firebaseUser) {
+      const userRef = doc(db, "users", firebaseUser.uid);
+      const snap = await getDoc(userRef);
+      if (snap.exists()) {
+        state.currentUser = { uid: firebaseUser.uid, ...snap.data() };
+        return;
+      }
+      const configuredAdminEmail = "251811@ku.ac.bd";
+      const assignedRole = (firebaseUser.email || "").toLowerCase() === configuredAdminEmail ? "admin" : "student";
+      const pendingReg = JSON.parse(sessionStorage.getItem("pending_reg_meta") || "{}");
+      const newProfile = {
+        name: pendingReg.name || firebaseUser.displayName || (firebaseUser.email || "student").split("@")[0],
+        studentId: pendingReg.studentId || "ID-PENDING",
+        email: firebaseUser.email || "",
+        role: assignedRole,
+        expiryMs: assignedRole === "admin" ? Date.now() + THIRTY_DAYS_MS * 12 : 0,
+        createdAt: Date.now()
+      };
+      await setDoc(userRef, newProfile);
+      sessionStorage.removeItem("pending_reg_meta");
+      state.currentUser = { uid: firebaseUser.uid, ...newProfile };
+      if (assignedRole === "admin") {
+        await setDoc(doc(db, "portal_config", "main"), {
+          ...state.settings, batchName: "Chemistry 25 Batch", monthlyFee: 20,
+          bkashNumber: "01910119827", nagadNumber: "01910119827", adminEmail: configuredAdminEmail
+        }, { merge: true });
+        showToast("CR Admin account activated.", "success");
+      }
+    }
+
+    function clearFirestoreListeners() {
+      unsubscribers.forEach((fn) => fn());
+      unsubscribers = [];
+    }
+
+    function startLiveFirestoreSync() {
+      if (!db || !state.currentUser) return;
+      const isAdmin = state.currentUser.role === "admin";
+      unsubscribers.push(onSnapshot(doc(db, "portal_config", "main"), (snap) => {
+        if (snap.exists()) state.settings = { ...state.settings, ...snap.data() };
+        renderAll();
+      }));
+      unsubscribers.push(onSnapshot(doc(db, "users", state.currentUser.uid), (snap) => {
+        if (snap.exists()) { state.currentUser = { uid: state.currentUser.uid, ...snap.data() }; routeCurrentUser(); }
+      }));
+      const paymentRef = collection(db, "payments");
+      const paymentQuery = isAdmin ? paymentRef : query(paymentRef, where("uid", "==", state.currentUser.uid));
+      unsubscribers.push(onSnapshot(paymentQuery, (snap) => {
+        state.payments = snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt||0)-(a.createdAt||0));
+        renderLockScreenStatus(); renderAdminPanel();
+      }));
+      if (isAdmin) {
+        unsubscribers.push(onSnapshot(collection(db, "users"), (snap) => {
+          state.users = snap.docs.map((d) => ({ uid: d.id, ...d.data() })).sort((a,b) => (a.studentId||"").localeCompare(b.studentId||""));
+          renderAdminPanel();
+        }));
+      } else {
+        state.users = [state.currentUser];
+      }
+      for (const col of ["routines", "materials", "notices"]) {
+        unsubscribers.push(onSnapshot(collection(db, col), (snap) => {
+          state[col] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          if (col !== "routines") state[col].sort((a,b) => (b.createdAt||0)-(a.createdAt||0));
+          renderAll();
+        }));
+      }
+      unsubscribers.push(onSnapshot(collection(db, "messages"), (snap) => {
+        state.messages = snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a,b) => (a.createdAt||0)-(b.createdAt||0));
+        renderChatPanel();
+      }));
+    }
+
+    // -------------------------------------------------------------------
+    // 5. ROUTING & ACCESS GATE LOGIC
+    // -------------------------------------------------------------------
+    function isUserUnlocked(user) {
+      if (!user) return false;
+      if (user.role === "admin") return true;
+      return (user.expiryMs || 0) > Date.now();
+    }
+
+    function routeCurrentUser() {
+      const user = state.currentUser;
+      const logoutBtn = document.getElementById("btn-logout");
+
+      if (!user) {
+        logoutBtn.classList.add("hidden");
+        showScreen("auth");
+        return;
+      }
+
+      logoutBtn.classList.remove("hidden");
+
+      if (!isUserUnlocked(user)) {
+        showScreen("locked");
+        renderLockScreenStatus();
+        return;
+      }
+
+      showScreen("portal");
+      renderAll();
+    }
+
+    function showScreen(name) {
+      document.getElementById("screen-auth").classList.toggle("hidden", name !== "auth");
+      document.getElementById("screen-locked").classList.toggle("hidden", name !== "locked");
+      document.getElementById("screen-portal").classList.toggle("hidden", name !== "portal");
+    }
+
+    // -------------------------------------------------------------------
+    // 6. AUTH HANDLERS (SIGN IN, SIGN UP, LOGOUT)
+    // -------------------------------------------------------------------
+    window.toggleAuthMode = function (mode) {
+      const isSignIn = mode === "signin";
+      document.getElementById("form-signin").classList.toggle("hidden", !isSignIn);
+      document.getElementById("form-signup").classList.toggle("hidden", isSignIn);
+
+      document.getElementById("tab-signin").className = isSignIn
+        ? "py-2 rounded-lg text-xs sm:text-sm font-bold bg-white text-indigo-700 shadow-xs transition"
+        : "py-2 rounded-lg text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 transition";
+
+      document.getElementById("tab-signup").className = !isSignIn
+        ? "py-2 rounded-lg text-xs sm:text-sm font-bold bg-white text-indigo-700 shadow-xs transition"
+        : "py-2 rounded-lg text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 transition";
+    };
+
+    window.handleSignIn = async function (e) {
+      e.preventDefault();
+      const email = document.getElementById("signin-email").value.trim();
+      const password = document.getElementById("signin-password").value;
+
+      if (!isLiveFirebase) {
+        const found = state.users.find((u) => u.email.toLowerCase() === email.toLowerCase()) || state.users[1];
+        state.currentUser = found;
+        routeCurrentUser();
+        showToast(`Signed in as ${found.name} (Demo Mode)`, "success");
+        return;
+      }
+
+      try {
+        const btn = document.getElementById("btn-signin-submit");
+        btn.disabled = true;
+        btn.textContent = "Signing in...";
+        await signInWithEmailAndPassword(auth, email, password);
+        showToast("Signed in successfully!", "success");
+      } catch (err) {
+        showToast(err.message.replace("Firebase:", "").trim(), "warning");
+      } finally {
+        const btn = document.getElementById("btn-signin-submit");
+        btn.disabled = false;
+        btn.textContent = "Sign In to Portal";
+      }
+    };
+
+    window.handleSignUp = async function (e) {
+      e.preventDefault();
+      const name = document.getElementById("signup-name").value.trim();
+      const studentId = document.getElementById("signup-sid").value.trim();
+      const email = document.getElementById("signup-email").value.trim();
+      const password = document.getElementById("signup-password").value;
+
+      if (!isLiveFirebase) {
+        const newDemoUser = {
+          uid: "demo-" + Date.now(),
+          name,
+          studentId,
+          email,
+          role: "student",
+          expiryMs: 0
+        };
+        state.users.push(newDemoUser);
+        state.currentUser = newDemoUser;
+        routeCurrentUser();
+        showToast("Account created in Demo Mode!", "success");
+        return;
+      }
+
+      try {
+        const btn = document.getElementById("btn-signup-submit");
+        btn.disabled = true;
+        btn.textContent = "Creating account...";
+        sessionStorage.setItem("pending_reg_meta", JSON.stringify({ name, studentId }));
+        await createUserWithEmailAndPassword(auth, email, password);
+        showToast("Account created!", "success");
+      } catch (err) {
+        sessionStorage.removeItem("pending_reg_meta");
+        showToast(err.message.replace("Firebase:", "").trim(), "warning");
+      } finally {
+        const btn = document.getElementById("btn-signup-submit");
+        btn.disabled = false;
+        btn.textContent = "Create Account";
+      }
+    };
+
+    window.handleLogout = async function () {
+      if (isLiveFirebase && auth) {
+        await signOut(auth);
+      } else {
+        state.currentUser = null;
+        routeCurrentUser();
+      }
+      showToast("Logged out.", "success");
+    };
+
+    // -------------------------------------------------------------------
+    // 7. DEMO PERSONA SWITCHER
+    // -------------------------------------------------------------------
+    window.switchDemoPersona = function (type) {
+      if (isLiveFirebase) return;
+      if (type === "student_active") {
+        state.currentUser = state.users.find((u) => u.uid === "demo-active") || state.users[1];
+      } else if (type === "student_locked") {
+        state.currentUser = state.users.find((u) => u.uid === "demo-locked") || state.users[2];
+      } else if (type === "admin") {
+        state.currentUser = state.users.find((u) => u.role === "admin") || state.users[0];
+        state.portalTab = "admin";
+      }
+
+      // Highlight active button
+      ["active", "locked", "admin"].forEach((k) => {
+        const btn = document.getElementById(`demo-btn-${k}`);
+        const active = (type === "student_active" && k === "active") ||
+                       (type === "student_locked" && k === "locked") ||
+                       (type === "admin" && k === "admin");
+        btn.className = active
+          ? "px-2.5 py-1 rounded-lg font-semibold bg-indigo-600 text-white transition"
+          : "px-2.5 py-1 rounded-lg font-semibold text-slate-300 hover:text-white transition";
+      });
+
+      routeCurrentUser();
+    };
+
+    // -------------------------------------------------------------------
+    // 8. PAYMENT LOCK SCREEN & SUBMISSION
+    // -------------------------------------------------------------------
+    function renderLockScreenStatus() {
+      const user = state.currentUser;
+      if (!user) return;
+
+      document.getElementById("lock-user-name").textContent = user.name;
+      document.getElementById("lock-user-sid").textContent = `ID: ${user.studentId}`;
+      document.getElementById("lock-fee-badge").textContent = `৳ ${state.settings.monthlyFee} BDT / Month`;
+      document.getElementById("lock-bkash-num").textContent = state.settings.bkashNumber;
+      document.getElementById("lock-nagad-num").textContent = state.settings.nagadNumber;
+
+      const myPending = state.payments.find((p) => p.uid === user.uid && p.status === "pending");
+      const pendingBox = document.getElementById("lock-pending-box");
+      if (myPending) {
+        pendingBox.classList.remove("hidden");
+        document.getElementById("lock-pending-detail").innerHTML = `
+          Submitted <strong>${myPending.method}</strong> TrxID: <strong class="font-mono">${myPending.trxId}</strong> (${myPending.sender}). Waiting for CR approval.
+        `;
+      } else {
+        pendingBox.classList.add("hidden");
+      }
+    }
+
+    window.submitSubscriptionPayment = async function (e) {
+      e.preventDefault();
+      const user = state.currentUser;
+      if (!user) return;
+
+      const method = document.getElementById("sub-pay-method").value;
+      const sender = document.getElementById("sub-pay-sender").value.trim();
+      const trxId = document.getElementById("sub-pay-trxid").value.trim().toUpperCase();
+
+      const payload = {
+        uid: user.uid,
+        studentName: user.name,
+        studentId: user.studentId,
+        method,
+        sender,
+        trxId,
+        amount: state.settings.monthlyFee,
+        status: "pending",
+        createdAt: Date.now()
+      };
+
+      if (isLiveFirebase && db) {
+        await addDoc(collection(db, "payments"), payload);
+      } else {
+        state.payments.unshift({ id: "pay-" + Date.now(), ...payload });
+        renderLockScreenStatus();
+        renderAdminPanel();
+      }
+
+      e.target.reset();
+      showToast("Payment submitted! Waiting for CR verification.", "success");
+    };
+
+    // -------------------------------------------------------------------
+    // 9. PORTAL RENDERING (HEADER, HOME, ROUTINE, MATERIALS, NOTICES, CHAT)
+    // -------------------------------------------------------------------
+    function renderAll() {
+      const user = state.currentUser;
+      if (!user) return;
+
+      // Top & Profile Header
+      document.getElementById("top-portal-title").textContent = state.settings.batchName;
+      document.getElementById("portal-batch-subtitle").textContent = `${state.settings.batchName} • Verified Member Portal`;
+      document.getElementById("chat-room-title").textContent = `${state.settings.batchName} — Official Group`;
+
+      const initials = user.name
+        .split(" ")
+        .map((w) => w[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase();
+      document.getElementById("user-avatar-initials").textContent = initials || "ST";
+      document.getElementById("portal-user-name").textContent = user.name;
+      document.getElementById("portal-user-sid").textContent = `ID: ${user.studentId}`;
+
+      const isAdmin = user.role === "admin";
+      document.getElementById("portal-role-badge").classList.toggle("hidden", !isAdmin);
+      document.getElementById("ptab-admin").classList.toggle("hidden", !isAdmin);
+
+      // Subscription Countdown
+      if (isAdmin) {
+        document.getElementById("portal-sub-countdown").textContent = "CR Admin • Unlimited Access";
+        document.getElementById("portal-sub-expiry-date").textContent = "Full Administrative Control";
+      } else {
+        const daysLeft = Math.max(0, Math.ceil((user.expiryMs - Date.now()) / (24 * 60 * 60 * 1000)));
+        const expDateStr = new Date(user.expiryMs).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+        document.getElementById("portal-sub-countdown").textContent = `Active • ${daysLeft} Day${daysLeft === 1 ? "" : "s"} Left`;
+        document.getElementById("portal-sub-expiry-date").textContent = `Valid until ${expDateStr}`;
+      }
+
+      // If non-admin somehow had admin tab active, switch back to home
+      if (!isAdmin && state.portalTab === "admin") {
+        switchPortalTab("home");
+      }
+
+      renderHomePanel();
+      renderRoutinePanel();
+      renderMaterialsPanel();
+      renderNoticesPanel();
+      renderChatPanel();
+      if (isAdmin) renderAdminPanel();
+    }
+
+    window.switchPortalTab = function (tabName) {
+      if (tabName === "admin" && state.currentUser?.role !== "admin") return;
+      state.portalTab = tabName;
+
+      document.querySelectorAll(".portal-panel").forEach((el) => el.classList.add("hidden"));
+      document.getElementById(`panel-${tabName}`).classList.remove("hidden");
+
+      document.querySelectorAll(".portal-tab-btn").forEach((btn) => {
+        const isAdminBtn = btn.id === "ptab-admin";
+        if (btn.id === `ptab-${tabName}`) {
+          btn.className = "portal-tab-btn flex-1 min-w-[100px] py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 bg-indigo-600 text-white shadow-xs";
+        } else if (isAdminBtn) {
+          btn.className = "portal-tab-btn flex-1 min-w-[130px] py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200";
+        } else {
+          btn.className = "portal-tab-btn flex-1 min-w-[100px] py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 text-slate-600 hover:bg-slate-100";
+        }
+      });
+
+      if (tabName === "chat") {
+        const box = document.getElementById("chat-feed-container");
+        box.scrollTop = box.scrollHeight;
+      }
+    };
+
+    function getTodayWorkingDay() {
+      const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      const today = days[new Date().getDay()];
+      return ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"].includes(today) ? today : "Sunday";
+    }
+
+    function renderHomePanel() {
+      // Urgent Notice
+      const urgent = state.notices.find((n) => n.urgent) || state.notices[0];
+      const urgentEl = document.getElementById("home-urgent-banner");
+      if (urgent) {
+        urgentEl.innerHTML = `
+          <div class="bg-rose-50 border border-rose-200 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-start gap-3">
+              <div class="h-10 w-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+                <i class="fa-solid fa-bell"></i>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-rose-600 text-white">${urgent.urgent ? "URGENT NOTICE" : "LATEST NOTICE"}</span>
+                  <span class="text-xs text-rose-700">${formatTimeAgo(urgent.createdAt)}</span>
+                </div>
+                <h3 class="text-sm sm:text-base font-bold text-slate-900 mt-1">${escapeHtml(urgent.title)}</h3>
+                <p class="text-xs sm:text-sm text-slate-700 mt-1 leading-relaxed">${escapeHtml(urgent.body)}</p>
+              </div>
+            </div>
+            <button onclick="switchPortalTab('notices')" class="self-start sm:self-center px-3.5 py-2 rounded-xl bg-white hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold shrink-0 transition">
+              All Notices
+            </button>
+          </div>
+        `;
+      } else {
+        urgentEl.innerHTML = "";
+      }
+
+      // Today's Classes
+      const todayDay = getTodayWorkingDay();
+      document.getElementById("home-today-heading").textContent = `Today's Classes (${todayDay})`;
+      const todaysClasses = state.routines.filter((r) => r.day === todayDay);
+      const todayList = document.getElementById("home-today-list");
+
+      if (todaysClasses.length === 0) {
+        todayList.innerHTML = `<div class="p-6 text-center text-xs sm:text-sm text-slate-400 bg-slate-50 rounded-xl">No classes listed for ${todayDay}.</div>`;
+      } else {
+        todayList.innerHTML = todaysClasses.map((c) => `
+          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <span class="text-xs font-bold text-indigo-600">${escapeHtml(c.time)}</span>
+              <h4 class="text-sm font-bold text-slate-900 mt-0.5">${escapeHtml(c.course)}</h4>
+              <p class="text-xs text-slate-500 mt-0.5"><i class="fa-solid fa-user-tie mr-1"></i>${escapeHtml(c.teacher)}</p>
+            </div>
+            <span class="self-start sm:self-center text-xs font-bold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700">
+              <i class="fa-solid fa-location-dot text-rose-500 mr-1"></i>${escapeHtml(c.room)}
+            </span>
+          </div>
+        `).join("");
+      }
+
+      // Latest Materials
+      const latestBox = document.getElementById("home-latest-materials");
+      if (state.materials.length === 0) {
+        latestBox.innerHTML = `<p class="text-xs text-slate-400 py-4 text-center">No slides uploaded yet.</p>`;
+      } else {
+        latestBox.innerHTML = state.materials.slice(0, 3).map((m) => `
+          <a href="${escapeAttr(m.url)}" target="_blank" rel="noopener noreferrer"
+            class="block p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/70 border border-slate-200/80 transition">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">${escapeHtml(m.course)}</span>
+              <span class="text-[11px] text-slate-400">${escapeHtml(m.type)}</span>
+            </div>
+            <p class="text-xs font-bold text-slate-800 mt-1.5 truncate">${escapeHtml(m.title)}</p>
+          </a>
+        `).join("");
+      }
+    }
+
+    function renderRoutinePanel() {
+      const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
+      const tabsEl = document.getElementById("routine-day-tabs");
+      tabsEl.innerHTML = days.map((d) => `
+        <button onclick="selectRoutineDay('${d}')"
+          class="px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+            state.selectedDay === d ? "bg-indigo-600 text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+          }">
+          ${d}
+        </button>
+      `).join("");
+
+      const filtered = state.routines.filter((r) => r.day === state.selectedDay);
+      const listEl = document.getElementById("routine-cards-list");
+      if (filtered.length === 0) {
+        listEl.innerHTML = `<div class="py-10 text-center text-sm text-slate-400">No classes scheduled for ${state.selectedDay}.</div>`;
+        return;
+      }
+
+      listEl.innerHTML = filtered.map((r) => `
+        <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="space-y-1">
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg">
+              <i class="fa-regular fa-clock"></i>${escapeHtml(r.time)}
+            </span>
+            <h3 class="text-sm sm:text-base font-bold text-slate-900">${escapeHtml(r.course)}</h3>
+            <p class="text-xs text-slate-600"><i class="fa-solid fa-chalkboard-user mr-1.5 text-slate-400"></i>${escapeHtml(r.teacher)}</p>
+          </div>
+          <span class="self-start sm:self-center px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-800">
+            <i class="fa-solid fa-door-open text-indigo-500 mr-1.5"></i>${escapeHtml(r.room)}
+          </span>
+        </div>
+      `).join("");
+    }
+
+    window.selectRoutineDay = function (day) {
+      state.selectedDay = day;
+      renderRoutinePanel();
+    };
+
+    window.renderMaterialsPanel = function () {
+      // Populate dynamic course filter options
+      const courseSelect = document.getElementById("filter-mat-course");
+      const currentCourseVal = courseSelect.value;
+      const uniqueCourses = [...new Set(state.materials.map((m) => m.course))];
+      courseSelect.innerHTML = `<option value="ALL">All Courses</option>` +
+        uniqueCourses.map((c) => `<option value="${escapeAttr(c)}">${escapeHtml(c)}</option>`).join("");
+      if (uniqueCourses.includes(currentCourseVal)) courseSelect.value = currentCourseVal;
+
+      const q = document.getElementById("filter-mat-search").value.toLowerCase();
+      const cFilter = courseSelect.value;
+      const tFilter = document.getElementById("filter-mat-type").value;
+
+      const filtered = state.materials.filter((m) => {
+        const matchC = cFilter === "ALL" || m.course === cFilter;
+        const matchT = tFilter === "ALL" || m.type === tFilter;
+        const matchQ = m.title.toLowerCase().includes(q) || m.course.toLowerCase().includes(q);
+        return matchC && matchT && matchQ;
+      });
+
+      const grid = document.getElementById("materials-cards-grid");
+      if (filtered.length === 0) {
+        grid.innerHTML = `<div class="col-span-full py-10 text-center text-sm text-slate-400">No slides or notes found.</div>`;
+        return;
+      }
+
+      grid.innerHTML = filtered.map((m) => `
+        <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50/60 hover:bg-white hover:shadow-md transition flex flex-col justify-between gap-4">
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <span class="text-xs font-bold px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700">${escapeHtml(m.course)}</span>
+              <span class="text-xs font-bold px-2 py-0.5 rounded bg-slate-200/70 text-slate-700">${escapeHtml(m.type)}</span>
+            </div>
+            <h3 class="text-sm sm:text-base font-bold text-slate-900">${escapeHtml(m.title)}</h3>
+          </div>
+          <div class="flex items-center justify-between pt-3 border-t border-slate-200/70">
+            <span class="text-[11px] text-slate-400">${formatTimeAgo(m.createdAt)}</span>
+            <a href="${escapeAttr(m.url)}" target="_blank" rel="noopener noreferrer"
+              class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition inline-flex items-center gap-1.5">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i>
+              <span>Open / Download</span>
+            </a>
+          </div>
+        </div>
+      `).join("");
+    };
+
+    function renderNoticesPanel() {
+      const list = document.getElementById("notices-cards-list");
+      if (state.notices.length === 0) {
+        list.innerHTML = `<div class="py-10 text-center text-sm text-slate-400">No notices posted yet.</div>`;
+        return;
+      }
+
+      list.innerHTML = state.notices.map((n) => `
+        <div class="p-4 sm:p-5 rounded-2xl border ${n.urgent ? "bg-rose-50/70 border-rose-200" : "bg-slate-50/70 border-slate-200"}">
+          <div class="flex items-center gap-2 mb-1.5">
+            ${n.urgent
+              ? '<span class="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded bg-rose-600 text-white">URGENT</span>'
+              : '<span class="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded bg-slate-200 text-slate-700">NOTICE</span>'}
+            <span class="text-xs text-slate-500">${formatTimeAgo(n.createdAt)}</span>
+          </div>
+          <h3 class="text-sm sm:text-base font-bold text-slate-900">${escapeHtml(n.title)}</h3>
+          <p class="text-xs sm:text-sm text-slate-700 mt-1.5 leading-relaxed whitespace-pre-line">${escapeHtml(n.body)}</p>
+        </div>
+      `).join("");
+    }
+
+    function renderChatPanel() {
+      const box = document.getElementById("chat-feed-container");
+      const me = state.currentUser;
+      if (!me) return;
+
+      if (state.messages.length === 0) {
+        box.innerHTML = `<div class="text-center text-xs text-slate-400 my-auto">No messages yet. Start the batch conversation!</div>`;
+        return;
+      }
+
+      box.innerHTML = state.messages.map((msg) => {
+        const isMe = msg.uid === me.uid;
+        const isCR = msg.role === "admin";
+        return `
+          <div class="flex flex-col ${isMe ? "items-end" : "items-start"}">
+            <div class="flex items-center gap-1.5 mb-1 px-1">
+              <span class="text-[11px] font-bold ${isCR ? "text-indigo-600" : "text-slate-600"}">
+                ${escapeHtml(msg.senderName)} (${escapeHtml(msg.studentId)})
+              </span>
+              ${isCR ? '<span class="text-[10px] font-extrabold px-1.5 rounded bg-indigo-100 text-indigo-700">CR</span>' : ""}
+              <span class="text-[10px] text-slate-400">${formatClockTime(msg.createdAt)}</span>
+            </div>
+            <div class="max-w-[82%] sm:max-w-[70%] px-4 py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-xs ${
+              isMe
+                ? "bg-indigo-600 text-white rounded-br-sm"
+                : "bg-white border border-slate-200 text-slate-800 rounded-bl-sm"
+            }">
+              ${escapeHtml(msg.text)}
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      box.scrollTop = box.scrollHeight;
+    }
+
+    window.handleSendChat = async function (e) {
+      e.preventDefault();
+      const input = document.getElementById("chat-message-input");
+      const text = input.value.trim();
+      const user = state.currentUser;
+      if (!text || !user) return;
+
+      const payload = {
+        uid: user.uid,
+        senderName: user.name,
+        studentId: user.studentId,
+        role: user.role,
+        text,
+        createdAt: Date.now()
+      };
+
+      input.value = "";
+      if (isLiveFirebase && db) {
+        await addDoc(collection(db, "messages"), payload);
+      } else {
+        state.messages.push({ id: "msg-" + Date.now(), ...payload });
+        renderChatPanel();
+      }
+    };
+
+    // -------------------------------------------------------------------
+    // 10. CR ADMIN PANEL CONTROLS
+    // -------------------------------------------------------------------
+    window.switchAdminSubTab = function (sub) {
+      state.adminSubTab = sub;
+      document.querySelectorAll(".admin-subpanel").forEach((el) => el.classList.add("hidden"));
+      document.getElementById(`admin-subpanel-${sub}`).classList.remove("hidden");
+
+      document.querySelectorAll(".admin-sub-btn").forEach((btn) => {
+        btn.className = btn.id === `asub-${sub}`
+          ? "admin-sub-btn flex-1 min-w-[130px] py-2 px-3 rounded-xl text-xs font-bold bg-slate-900 text-white transition"
+          : "admin-sub-btn flex-1 min-w-[130px] py-2 px-3 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition";
+      });
+    };
+
+    function renderAdminPanel() {
+      if (state.currentUser?.role !== "admin") return;
+
+      const pendingPays = state.payments.filter((p) => p.status === "pending");
+      const activeStudents = state.users.filter((u) => u.role === "admin" || (u.expiryMs || 0) > Date.now());
+
+      document.getElementById("nav-pending-count").textContent = pendingPays.length;
+      document.getElementById("adm-stat-total").textContent = state.users.length;
+      document.getElementById("adm-stat-active").textContent = activeStudents.length;
+      document.getElementById("adm-stat-pending").textContent = pendingPays.length;
+
+      // 1. Payments Queue
+      const payFeed = document.getElementById("admin-payments-feed");
+      if (state.payments.length === 0) {
+        payFeed.innerHTML = `<p class="text-xs text-slate-400 py-6 text-center">No subscription payment requests yet.</p>`;
+      } else {
+        payFeed.innerHTML = state.payments.map((p) => {
+          const isPending = p.status === "pending";
+          return `
+            <div class="p-4 rounded-2xl border ${isPending ? "bg-amber-50/70 border-amber-200" : "bg-slate-50 border-slate-200"} flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="space-y-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="font-bold text-sm text-slate-900">${escapeHtml(p.studentName)}</span>
+                  <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-200 text-slate-700">ID: ${escapeHtml(p.studentId)}</span>
+                  <span class="text-xs font-bold px-2.5 py-0.5 rounded-full ${p.method === "bKash" ? "bg-pink-100 text-pink-700" : "bg-orange-100 text-orange-700"}">
+                    ${escapeHtml(p.method)} • ৳${p.amount || state.settings.monthlyFee}
+                  </span>
+                </div>
+                <p class="text-xs text-slate-600">
+                  TrxID: <strong class="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-900">${escapeHtml(p.trxId)}</strong>
+                  • Sender: ${escapeHtml(p.sender)} • ${formatTimeAgo(p.createdAt)}
+                </p>
+              </div>
+              <div class="flex items-center gap-2 self-end sm:self-center">
+                ${isPending ? `
+                  <button onclick="processPaymentDecision('${p.id}', 'approved')"
+                    class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs">
+                    <i class="fa-solid fa-check mr-1"></i>Approve (+30 Days)
+                  </button>
+                  <button onclick="processPaymentDecision('${p.id}', 'rejected')"
+                    class="px-3 py-2 rounded-xl bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs font-bold transition">
+                    Reject
+                  </button>
+                ` : `
+                  <span class="text-xs font-extrabold uppercase px-3 py-1 rounded-xl ${p.status === "approved" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}">
+                    ${escapeHtml(p.status)}
+                  </span>
+                `}
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+
+      // 2. Routine List
+      document.getElementById("admin-routine-list").innerHTML = state.routines.map((r) => `
+        <div class="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-2">
+          <div>
+            <span class="text-[11px] font-bold text-indigo-600">${escapeHtml(r.day)} • ${escapeHtml(r.time)}</span>
+            <p class="text-xs sm:text-sm font-bold text-slate-900">${escapeHtml(r.course)}</p>
+            <p class="text-[11px] text-slate-500">${escapeHtml(r.room)} • ${escapeHtml(r.teacher)}</p>
+          </div>
+          <button onclick="deleteCollectionItem('routines', '${r.id}')" class="p-2 text-rose-600 hover:bg-rose-50 rounded-lg text-xs">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      `).join("") || `<p class="text-xs text-slate-400">No routines added yet.</p>`;
+
+      // 3. Materials List
+      document.getElementById("admin-materials-list").innerHTML = state.materials.map((m) => `
+        <div class="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <span class="text-[11px] font-bold text-emerald-700">${escapeHtml(m.course)} • ${escapeHtml(m.type)}</span>
+            <p class="text-xs sm:text-sm font-bold text-slate-900 truncate">${escapeHtml(m.title)}</p>
+          </div>
+          <button onclick="deleteCollectionItem('materials', '${m.id}')" class="p-2 text-rose-600 hover:bg-rose-50 rounded-lg text-xs shrink-0">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      `).join("") || `<p class="text-xs text-slate-400">No materials uploaded yet.</p>`;
+
+      // 4. Notices List
+      document.getElementById("admin-notices-list").innerHTML = state.notices.map((n) => `
+        <div class="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <span class="text-[10px] font-extrabold uppercase ${n.urgent ? "text-rose-600" : "text-slate-500"}">${n.urgent ? "URGENT" : "GENERAL"}</span>
+            <p class="text-xs sm:text-sm font-bold text-slate-900 truncate">${escapeHtml(n.title)}</p>
+          </div>
+          <button onclick="deleteCollectionItem('notices', '${n.id}')" class="p-2 text-rose-600 hover:bg-rose-50 rounded-lg text-xs shrink-0">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      `).join("") || `<p class="text-xs text-slate-400">No notices posted yet.</p>`;
+
+      // 5. Settings Form Fill
+      document.getElementById("set-batch-name").value = state.settings.batchName || "";
+      document.getElementById("set-monthly-fee").value = state.settings.monthlyFee || 50;
+      document.getElementById("set-admin-email").value = state.settings.adminEmail || state.currentUser.email;
+      document.getElementById("set-bkash").value = state.settings.bkashNumber || "";
+      document.getElementById("set-nagad").value = state.settings.nagadNumber || "";
+
+      // 6. Students Directory Table
+      document.getElementById("admin-students-tbody").innerHTML = state.users.map((u) => {
+        const unlocked = isUserUnlocked(u);
+        const expText = u.role === "admin"
+          ? "Never (Admin)"
+          : (u.expiryMs > Date.now()
+              ? new Date(u.expiryMs).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+              : "Expired");
+
+        return `
+          <tr class="hover:bg-slate-50">
+            <td class="py-3 px-3 font-bold text-slate-900">${escapeHtml(u.name)}</td>
+            <td class="py-3 px-3 font-mono text-xs text-slate-600">${escapeHtml(u.studentId)}</td>
+            <td class="py-3 px-3 text-xs font-bold uppercase ${u.role === "admin" ? "text-indigo-600" : "text-slate-500"}">${escapeHtml(u.role)}</td>
+            <td class="py-3 px-3">
+              <span class="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-0.5 rounded-full ${unlocked ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}">
+                ${unlocked ? "Active" : "Locked"}
+              </span>
+            </td>
+            <td class="py-3 px-3 text-xs text-slate-600">${expText}</td>
+            <td class="py-3 px-3 text-right space-x-1">
+              ${u.role !== "admin" ? `
+                <button onclick="adminExtendStudent('${u.uid}', 30)" class="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold">
+                  +30d
+                </button>
+                <button onclick="adminExtendStudent('${u.uid}', 0)" class="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold">
+                  Lock
+                </button>
+              ` : `<span class="text-xs text-slate-400">CR Owner</span>`}
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    window.processPaymentDecision = async function (paymentId, decision) {
+      const payment = state.payments.find((p) => p.id === paymentId);
+      if (!payment) return;
+
+      if (isLiveFirebase && db) {
+        await updateDoc(doc(db, "payments", paymentId), { status: decision });
+        if (decision === "approved" && payment.uid) {
+          const userSnap = await getDoc(doc(db, "users", payment.uid));
+          const currentExp = userSnap.exists() ? (userSnap.data().expiryMs || 0) : 0;
+          const baseTime = Math.max(Date.now(), currentExp);
+          await updateDoc(doc(db, "users", payment.uid), { expiryMs: baseTime + THIRTY_DAYS_MS });
+        }
+      } else {
+        payment.status = decision;
+        if (decision === "approved") {
+          const stu = state.users.find((u) => u.uid === payment.uid);
+          if (stu) {
+            stu.expiryMs = Math.max(Date.now(), stu.expiryMs || 0) + THIRTY_DAYS_MS;
+          }
+        }
+        renderAdminPanel();
+      }
+
+      showToast(decision === "approved" ? `Approved ${payment.studentName} (+30 Days)!` : "Payment marked rejected.", decision === "approved" ? "success" : "warning");
+    };
+
+    window.adminExtendStudent = async function (uid, days) {
+      const target = state.users.find((u) => u.uid === uid);
+      if (!target) return;
+
+      const newExpiry = days === 0
+        ? 0
+        : Math.max(Date.now(), target.expiryMs || 0) + days * 24 * 60 * 60 * 1000;
+
+      if (isLiveFirebase && db) {
+        await updateDoc(doc(db, "users", uid), { expiryMs: newExpiry });
+      } else {
+        target.expiryMs = newExpiry;
+        renderAdminPanel();
+      }
+
+      showToast(days === 0 ? `Locked ${target.name}'s access.` : `Extended ${target.name} by +${days} days!`, "success");
+    };
+
+    window.handleAdminAddRoutine = async function (e) {
+      e.preventDefault();
+      const payload = {
+        day: document.getElementById("adm-routine-day").value,
+        time: document.getElementById("adm-routine-time").value.trim(),
+        course: document.getElementById("adm-routine-course").value.trim(),
+        room: document.getElementById("adm-routine-room").value.trim(),
+        teacher: document.getElementById("adm-routine-teacher").value.trim()
+      };
+
+      if (isLiveFirebase && db) {
+        await addDoc(collection(db, "routines"), payload);
+      } else {
+        state.routines.push({ id: "r-" + Date.now(), ...payload });
+        renderAll();
+      }
+
+      e.target.reset();
+      showToast("Class added to routine!", "success");
+    };
+
+    window.handleAdminAddMaterial = async function (e) {
+      e.preventDefault();
+      const course = document.getElementById("adm-mat-course").value.trim().toUpperCase();
+      const type = document.getElementById("adm-mat-type").value;
+      const title = document.getElementById("adm-mat-title").value.trim();
+      let url = document.getElementById("adm-mat-url").value.trim();
+      const fileInput = document.getElementById("adm-mat-file");
+      const file = fileInput.files[0];
+
+      const btn = document.getElementById("btn-upload-material");
+      btn.disabled = true;
+      btn.textContent = "Uploading...";
+
+      try {
+        if (file && !url) {
+          throw new Error("For free hosting, upload the file to Google Drive, set link sharing, then paste its link above.");
+        } else if (!url) {
+          throw new Error("Please paste a Google Drive sharing link.");
+        }
+
+        const payload = {
+          course,
+          type,
+          title,
+          url,
+          createdAt: Date.now()
+        };
+
+        if (isLiveFirebase && db) {
+          await addDoc(collection(db, "materials"), payload);
+        } else {
+          state.materials.unshift({ id: "m-" + Date.now(), ...payload });
+          renderAll();
+        }
+
+        e.target.reset();
+        showToast("Material published to Notes & Slides!", "success");
+      } catch (err) {
+        showToast("Upload failed: " + err.message, "warning");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "+ Publish Material";
+      }
+    };
+
+    window.handleAdminAddNotice = async function (e) {
+      e.preventDefault();
+      const payload = {
+        title: document.getElementById("adm-notice-title").value.trim(),
+        body: document.getElementById("adm-notice-body").value.trim(),
+        urgent: document.getElementById("adm-notice-urgent").checked,
+        createdAt: Date.now()
+      };
+
+      if (isLiveFirebase && db) {
+        await addDoc(collection(db, "notices"), payload);
+      } else {
+        state.notices.unshift({ id: "n-" + Date.now(), ...payload });
+        renderAll();
+      }
+
+      e.target.reset();
+      showToast("Notice published!", "success");
+    };
+
+    window.deleteCollectionItem = async function (colName, id) {
+      if (isLiveFirebase && db) {
+        await deleteDoc(doc(db, colName, id));
+      } else {
+        state[colName] = state[colName].filter((item) => item.id !== id);
+        renderAll();
+      }
+      showToast("Item deleted.", "warning");
+    };
+
+    window.handleSavePortalSettings = async function (e) {
+      e.preventDefault();
+      const updated = {
+        batchName: document.getElementById("set-batch-name").value.trim(),
+        monthlyFee: Number(document.getElementById("set-monthly-fee").value) || 20,
+        adminEmail: document.getElementById("set-admin-email").value.trim(),
+        bkashNumber: document.getElementById("set-bkash").value.trim(),
+        nagadNumber: document.getElementById("set-nagad").value.trim()
+      };
+
+      state.settings = { ...state.settings, ...updated };
+      if (isLiveFirebase && db) {
+        await setDoc(doc(db, "portal_config", "main"), state.settings, { merge: true });
+      }
+      renderAll();
+      showToast("Portal settings saved!", "success");
+    };
+
+    // -------------------------------------------------------------------
+    // 11. BACKEND SETUP WIZARD MODAL HANDLERS
+    // -------------------------------------------------------------------
+    window.openSetupModal = function () {
+      const saved = getSavedFirebaseConfig();
+      if (saved) {
+        document.getElementById("cfg-paste-box").value = JSON.stringify(saved.firebaseConfig, null, 2);
+        document.getElementById("cfg-admin-email").value = saved.adminEmail || "";
+        document.getElementById("cfg-batch-name").value = saved.batchName || "";
+      }
+      document.getElementById("setup-modal").classList.remove("hidden");
+    };
+
+    window.closeSetupModal = function () {
+      document.getElementById("setup-modal").classList.add("hidden");
+    };
+
+    window.saveFirebaseConfig = function (e) {
+      e.preventDefault();
+      const rawText = document.getElementById("cfg-paste-box").value.trim();
+      const adminEmail = document.getElementById("cfg-admin-email").value.trim();
+      const batchName = document.getElementById("cfg-batch-name").value.trim();
+
+      try {
+        // Parse flexible JS object snippet or strict JSON
+        const extracted = parseFlexibleFirebaseConfig(rawText);
+        if (!extracted.apiKey || !extracted.projectId) {
+          throw new Error("Missing apiKey or projectId in config.");
+        }
+
+        localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify({
+          firebaseConfig: extracted,
+          adminEmail,
+          batchName
+        }));
+
+        showToast("Firebase configuration saved! Reloading live portal...", "success");
+        setTimeout(() => window.location.reload(), 800);
+      } catch (err) {
+        showToast("Invalid config format. Paste the firebaseConfig object.", "warning");
+      }
+    };
+
+    window.resetToDemoMode = function () {
+      localStorage.removeItem(CONFIG_STORAGE_KEY);
+      showToast("Switched to Demo Mode. Reloading...", "success");
+      setTimeout(() => window.location.reload(), 600);
+    };
+
+    function parseFlexibleFirebaseConfig(text) {
+      // Extract key-value pairs cleanly whether pasted as JS object literal or JSON
+      const keys = ["apiKey", "authDomain", "projectId", "storageBucket", "messagingSenderId", "appId"];
+      const result = {};
+      keys.forEach((k) => {
+        const regex = new RegExp(`["']?${k}["']?\\s*:\\s*["']([^"']+)["']`);
+        const match = text.match(regex);
+        if (match && match[1]) result[k] = match[1];
+      });
+      return result;
+    }
+
+    // -------------------------------------------------------------------
+    // 12. UTILITIES (CLIPBOARD, TOAST, ESCAPING, FORMATTING)
+    // -------------------------------------------------------------------
+    window.copyTextById = function (elId, label) {
+      const val = document.getElementById(elId).textContent.trim();
+      const temp = document.createElement("input");
+      temp.value = val;
+      document.body.appendChild(temp);
+      temp.select();
+      document.execCommand("copy");
+      document.body.removeChild(temp);
+      showToast(`${label} number (${val}) copied!`, "success");
+    };
+
+    function showToast(message, type = "success") {
+      const container = document.getElementById("toast-container");
+      const toast = document.createElement("div");
+      const isWarn = type === "warning";
+      toast.className = `${isWarn ? "bg-amber-900 border-amber-700" : "bg-slate-900 border-slate-700"} text-white border px-4 py-3 rounded-2xl shadow-xl text-xs sm:text-sm font-medium flex items-center gap-2.5 transition-all duration-300`;
+      toast.innerHTML = `
+        <i class="fa-solid ${isWarn ? "fa-circle-exclamation text-amber-400" : "fa-circle-check text-emerald-400"} text-base"></i>
+        <span class="flex-1">${escapeHtml(message)}</span>
+      `;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = "0";
+        setTimeout(() => toast.remove(), 300);
+      }, 3200);
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function escapeAttr(str) {
+      return escapeHtml(str);
+    }
+
+    function formatTimeAgo(ts) {
+      if (!ts) return "Just now";
+      const diff = Math.floor((Date.now() - ts) / 1000);
+      if (diff < 60) return "Just now";
+      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+      return new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    }
+
+    function formatClockTime(ts) {
+      if (!ts) return "";
+      return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+
+    // Start application
+    window.addEventListener("DOMContentLoaded", bootApplication);
+  </script>
+</body>
+</html>
